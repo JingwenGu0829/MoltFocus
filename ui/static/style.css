@@ -1,31 +1,41 @@
 body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:0; background:#0b0c0f; color:#f6f7fb}
 *{box-sizing:border-box}
-.container{max-width:1180px; margin:0 auto; padding:18px}
-.top{display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:14px}
+.container{max-width:1100px; margin:0 auto; padding:16px}
+.top{display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px}
 .muted{color:#a9afc3}
 .small{font-size:12px}
-.grid{display:grid; grid-template-columns: 1.1fr .9fr; gap:14px}
+.grid{display:grid; grid-template-columns: 1.05fr .95fr; gap:12px}
 @media (max-width: 900px){.grid{grid-template-columns:1fr}}
-.card{border:1px solid rgba(255,255,255,.12); border-radius:16px; background:rgba(255,255,255,.04); padding:14px; margin-bottom:14px; overflow:hidden}
+.card{border:1px solid rgba(255,255,255,.12); border-radius:16px; background:rgba(255,255,255,.04); padding:12px; margin-bottom:12px; overflow:hidden}
 
-textarea{display:block; width:100%; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25); color:#f6f7fb; padding:10px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:13px; line-height:1.4}
+h1{font-size:26px; margin:0 0 6px}
+h2{font-size:18px; margin:0 0 10px}
+h3{font-size:14px; margin:12px 0 6px}
 
-button{border:1px solid rgba(255,255,255,.20); background:rgba(255,255,255,.08); color:#f6f7fb; padding:9px 11px; border-radius:12px; cursor:pointer}
+textarea{display:block; width:100%; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25); color:#f6f7fb; padding:10px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12.5px; line-height:1.35}
+
+button{border:1px solid rgba(255,255,255,.20); background:rgba(255,255,255,.08); color:#f6f7fb; padding:8px 10px; border-radius:12px; cursor:pointer; font-size:12.5px}
 button:hover{opacity:.9}
 
-label{display:block; margin:10px 0 6px; font-size:13px; color:#a9afc3}
+label{display:block; margin:10px 0 6px; font-size:12.5px; color:#a9afc3}
 .row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px}
 
-.pill{border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:8px 10px; font-size:12px; color:#a9afc3; background:rgba(255,255,255,.03)}
+.planbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin:8px 0 10px}
+.planbar-actions{display:flex; gap:10px}
+
+.pill{border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:7px 9px; font-size:12px; color:#a9afc3; background:rgba(255,255,255,.03)}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px; color:#f6f7fb}
-pre.mono{white-space:pre-wrap; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); padding:10px; max-height:260px; overflow:auto}
-details{margin-top:10px}
+pre.mono{white-space:pre-wrap; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); padding:10px; max-height:240px; overflow:auto; font-size:12px}
 summary{cursor:pointer}
 
-/* Todo rows (done + label + comment only) */
-.todo{display:grid; grid-template-columns: 26px minmax(0,1fr); gap:10px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.10); border-radius:12px; background:rgba(0,0,0,.14); margin:10px 0}
-.todo [data-label]{min-width:0}
-.todo input[type="text"]{width:100%; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); color:#f6f7fb; padding:8px; font-size:13px}
+/* Todo rows: checkbox | label | comment all on one line */
+.todo{display:grid; grid-template-columns: 22px minmax(0,1fr) 260px; gap:10px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.10); border-radius:12px; background:rgba(0,0,0,.14); margin:10px 0}
+.todo [data-label]{min-width:0; font-size:12.5px; line-height:1.2}
+.todo input[data-comment]{width:100%; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); color:#f6f7fb; padding:8px; font-size:12.5px}
+@media (max-width: 700px){
+  .todo{grid-template-columns: 22px 1fr;}
+  .todo input[data-comment]{grid-column: 2 / -1;}
+}
 
 .badge{font-weight:650}
 .badge.good{color:#62d98f}
@@ -33,9 +43,11 @@ summary{cursor:pointer}
 .badge.bad{color:#ff6b6b}
 
 /* markdown preview */
-.md{padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18)}
-.md h1,.md h2,.md h3{margin:10px 0 6px}
-.md p{margin:8px 0}
-.md ul{margin:8px 0 8px 20px}
+.md{padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18); font-size:13px}
+.md h1{font-size:22px; margin:8px 0 6px}
+.md h2{font-size:16px; margin:10px 0 6px}
+.md h3{font-size:13px; margin:10px 0 6px}
+.md p{margin:6px 0}
+.md ul{margin:6px 0 6px 18px}
 .md code{background:rgba(255,255,255,.06); padding:2px 6px; border-radius:8px}
 .md pre{background:rgba(0,0,0,.28); padding:10px; border-radius:12px; overflow:auto}

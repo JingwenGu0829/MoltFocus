@@ -66,12 +66,48 @@ window.addEventListener('DOMContentLoaded', () => {
   if (document.querySelector('#planPreview')) {
     showPlanPreview();
   }
-  const editBtn = document.querySelector('#planEdit');
-  const prevBtn = document.querySelector('#planPreviewBtn');
-  if (editBtn) editBtn.addEventListener('click', (e) => { e.preventDefault(); showPlanEdit(); });
-  if (prevBtn) prevBtn.addEventListener('click', (e) => { e.preventDefault(); showPlanPreview(); });
   const planTA = document.querySelector('#plan');
   if (planTA) planTA.addEventListener('input', debounce(renderPlanPreview, 200));
+
+
+  const toggleBtn = document.querySelector('#planToggle');
+  const planPane = document.querySelector('#planPane');
+  const planTA = document.querySelector('#plan');
+  const planPV = document.querySelector('#planPreview');
+
+  function setToggleLabel() {
+    if (!toggleBtn || !planTA) return;
+    toggleBtn.textContent = (planTA.style.display === 'none') ? 'Edit' : 'Preview';
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const ta = document.querySelector('#plan');
+      if (!ta) return;
+      if (ta.style.display === 'none') showPlanEdit();
+      else showPlanPreview();
+      setToggleLabel();
+    });
+  }
+
+  // Click plan preview to edit
+  if (planPV) {
+    planPV.addEventListener('click', (e) => {
+      // avoid toggling when selecting text
+      showPlanEdit();
+      setToggleLabel();
+    });
+  }
+
+  // Click outside plan pane -> preview
+  document.addEventListener('click', (e) => {
+    const ta = document.querySelector('#plan');
+    if (!ta || ta.style.display === 'none') return; // already preview
+    if (planPane && planPane.contains(e.target)) return;
+    showPlanPreview();
+    setToggleLabel();
+  });
 
 
   document.querySelectorAll('input, textarea, select').forEach(el => {
