@@ -19,6 +19,11 @@ function debounce(fn, ms) {
   };
 }
 
+function currentMode() {
+  const el = document.querySelector('input[name="mode"]:checked');
+  return el ? el.value : 'commit';
+}
+
 function collectDraft() {
   const items = [];
   document.querySelectorAll('[data-item-row]').forEach(row => {
@@ -30,7 +35,8 @@ function collectDraft() {
     items.push({ key, label, done, minutes, comment });
   });
   const reflection = document.querySelector('#reflection')?.value || '';
-  return { items, reflection };
+  const mode = currentMode();
+  return { mode, items, reflection };
 }
 
 async function saveDraftNow() {
@@ -48,8 +54,16 @@ async function saveDraftNow() {
 
 const saveDraft = debounce(saveDraftNow, 500);
 
+async function writeFocus(payload) {
+  try {
+    await postJSON('/api/focus', payload);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('input, textarea').forEach(el => {
+  document.querySelectorAll('input, textarea, select').forEach(el => {
     if (el.closest('[data-checkin]')) {
       el.addEventListener('input', saveDraft);
       el.addEventListener('change', saveDraft);
@@ -58,4 +72,30 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const manual = document.querySelector('#manualSave');
   if (manual) manual.addEventListener('click', (e) => { e.preventDefault(); saveDraftNow(); });
+
+  const focusStart = document.querySelector('#focusStart');
+  const focusStop = document.querySelector('#focusStop');
+  const focusSelect = document.querySelector('#focusSelect');
+  const focusStatus = document.querySelector('#focusStatus');
+
+  if (focusStart && focusSelect) {
+    focusStart.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const key = focusSelect.value;
+      if (!key) return;
+      const label = focusSelect.options[focusSelect.selectedIndex]?.textContent || '';
+      const startedAt = new Date().toISOString();
+      await writeFocus({ active: true, key, label, startedAt });
+      if (focusStatus) focusStatus.textContent = `Focus started: ${label}`;
+    });
+  }
+
+  if (focusStop) {
+    focusStop.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const stoppedAt = new Date().toISOString();
+      await writeFocus({ active: false, stoppedAt });
+      if (focusStatus) focusStatus.textContent = 'Focus stopped.';
+    });
+  }
 });

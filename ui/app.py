@@ -144,6 +144,7 @@ def index() -> HTMLResponse:
 
     ref_path = root / "reflections" / "reflections.md"
     draft_path = root / "planner" / "latest" / "checkin_draft.json"
+    focus_path = root / "planner" / "latest" / "focus.json"
     state_path = root / "planner" / "state.json"
 
     plan_md = _read_text(plan_path) or "# Plan\n\n(no plan yet)\n"
@@ -160,10 +161,13 @@ def index() -> HTMLResponse:
     draft = _read_json(draft_path) if draft_path.exists() else {}
     draft_day = draft.get("day")
     if draft_day != _today_str():
-        draft = {"day": _today_str(), "items": {}, "reflection": ""}
+        draft = {"day": _today_str(), "mode": "commit", "items": {}, "reflection": ""}
 
     # map draft items
     items_by_key: dict[str, Any] = draft.get("items", {}) or {}
+    mode = (draft.get("mode", "commit") or "commit").strip().lower()
+    if mode not in {"commit","recovery"}:
+        mode = "commit"
     reflection = draft.get("reflection", "") or ""
 
     # show last summary/rating
@@ -243,6 +247,17 @@ def index() -> HTMLResponse:
 
       <div class=\"card\" data-checkin>
         <h2>Check-in (auto-saves)</h2>
+        <div class="row" style="margin-top:8px">
+          <div class="muted small">Mode:</div>
+          <div>
+            <label class="muted small" style="display:inline-flex; gap:6px; align-items:center; margin-right:10px">
+              <input type="radio" name="mode" value="commit" {"checked" if mode=="commit" else ""} /> Commit
+            </label>
+            <label class="muted small" style="display:inline-flex; gap:6px; align-items:center">
+              <input type="radio" name="mode" value="recovery" {"checked" if mode=="recovery" else ""} /> Recovery
+            </label>
+          </div>
+        </div>
         <div class=\"muted small\">No submit needed. Status: <span id=\"saveStatus\">…</span> <button id=\"manualSave\">Save now</button></div>
 
         <h3 style=\"margin-top:12px\">Today’s to-do list</h3>
@@ -291,8 +306,13 @@ def save_plan(plan_md: str = Form(...)) -> RedirectResponse:
 def api_checkin_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     root = _workspace_root()
     draft_path = root / "planner" / "latest" / "checkin_draft.json"
+    focus_path = root / "planner" / "latest" / "focus.json"
 
     day = _today_str()
+    mode_in = (payload.get("mode", "commit") or "commit").strip().lower()
+    if mode_in not in {"commit","recovery"}:
+        mode_in = "commit"
+
     items_in = payload.get("items", []) or []
     reflection = payload.get("reflection", "") or ""
 
@@ -311,7 +331,8 @@ def api_checkin_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
     draft = {
         "day": day,
         "updatedAt": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "items": items,
+        "mode": mode_in,
+            "items": items,
         "reflection": reflection,
     }
 
@@ -327,6 +348,7 @@ def api_finalize() -> dict[str, Any]:
     """
     root = _workspace_root()
     draft_path = root / "planner" / "latest" / "checkin_draft.json"
+    focus_path = root / "planner" / "latest" / "focus.json"
     state_path = root / "planner" / "state.json"
     ref_path = root / "reflections" / "reflections.md"
 
@@ -335,7 +357,14 @@ def api_finalize() -> dict[str, Any]:
     if draft.get("day") != today:
         return {"ok": False, "reason": "no-draft-for-today", "today": today}
 
+    draft_mode = (draft.get("mode", "commit") or "commit").strip().lower()
+    if draft_mode not in {"commit","recovery"}:
+        draft_mode = "commit"
+
     items = draft.get("items", {}) or {}
+    mode = (draft.get("mode", "commit") or "commit").strip().lower()
+    if mode not in {"commit","recovery"}:
+        mode = "commit"
     reflection = draft.get("reflection", "") or ""
 
     done_items = []
@@ -356,7 +385,12 @@ def api_finalize() -> dict[str, Any]:
     plan_changed = plan_prev_path.exists() and _read_text(plan_prev_path).strip() != ""
 
     rating = _compute_rating(done_count, total_items, reflection, any_time)
+    # recovery mode is more forgiving
+    if draft_mode == "recovery" and rating == "bad" and (done_count >= 1 or len(reflection.strip()) >= 30 or any_time):
+        rating = "fair"
     counts = _counts_for_streak(done_count, reflection, plan_changed)
+    if draft_mode == "recovery":
+        counts = counts or (len(reflection.strip()) >= 30)
 
     state = _read_json(state_path) if state_path.exists() else {}
     last_streak_date = state.get("lastStreakDate")
@@ -376,7 +410,9 @@ def api_finalize() -> dict[str, Any]:
         f"## {today}",
         f"- Time: {now.isoformat(timespec='minutes')}",
         "",
-        f"**Rating:** {rating.upper()}",
+        f"**Rating:** {rating.upper()}"
+        "",
+        f"**Mode:** {draft_mode.upper()}",
         "",
         "**Done**",
     ]
@@ -425,6 +461,7 @@ def api_finalize() -> dict[str, Any]:
     # update state
     state["streak"] = streak
     state["lastRating"] = rating
+    state["lastMode"] = draft_mode
     state["lastSummary"] = summary
     state["lastFinalizedDate"] = today
     _write_json(state_path, state)
@@ -440,3 +477,12 @@ def raw_plan() -> PlainTextResponse:
     root = _workspace_root()
     plan_path = root / "planner" / "latest" / "plan.md"
     return PlainTextResponse(_read_text(plan_path) or "")
+
+
+@app.post("/api/focus")
+def api_focus(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
+    root = _workspace_root()
+    focus_path = root / "planner" / "latest" / "focus.json"
+    payload["updatedAt"] = datetime.now().astimezone().isoformat(timespec="seconds")
+    _write_json(focus_path, payload)
+    return {"ok": True}
