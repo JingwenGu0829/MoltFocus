@@ -9,3 +9,7 @@
 
 # generated artifacts (optional)
 planner/daily/
+
+# python
+__pycache__/
+*.pyc
