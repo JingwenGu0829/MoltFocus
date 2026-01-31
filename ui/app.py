@@ -149,6 +149,12 @@ def index() -> HTMLResponse:
     plan_md = _read_text(plan_path) or "# Plan\n\n(no plan yet)\n"
     issues_md = _read_text(issues_path)
 
+    profile_path = root / "planner" / "profile.yaml"
+    tasks_path = root / "planner" / "tasks.yaml"
+
+    profile_txt = _read_text(profile_path)
+    tasks_txt = _read_text(tasks_path)
+
     checkboxes = _extract_checkboxes(plan_md)
 
     draft = _read_json(draft_path) if draft_path.exists() else {}
