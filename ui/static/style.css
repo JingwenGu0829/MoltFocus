@@ -31,3 +31,11 @@ summary{cursor:pointer}
 .badge.good{color:#62d98f}
 .badge.fair{color:#f4c95d}
 .badge.bad{color:#ff6b6b}
+
+/* markdown preview */
+.md{padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18)}
+.md h1,.md h2,.md h3{margin:10px 0 6px}
+.md p{margin:8px 0}
+.md ul{margin:8px 0 8px 20px}
+.md code{background:rgba(255,255,255,.06); padding:2px 6px; border-radius:8px}
+.md pre{background:rgba(0,0,0,.28); padding:10px; border-radius:12px; overflow:auto}

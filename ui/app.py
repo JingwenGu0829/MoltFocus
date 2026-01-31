@@ -211,7 +211,6 @@ def index() -> HTMLResponse:
               <input type=\"checkbox\" {'checked' if done else ''} />
               <div data-label>\n                <span class=\"small\">{_escape(label)}</span>
               </div>
-              <input data-minutes type=\"number\" min=\"0\" step=\"5\" placeholder=\"min\" value=\"{minutes if minutes else ''}\" />
               <input data-comment type=\"text\" placeholder=\"comment\" value=\"{_escape(comment)}\" />
             </div>
             """
@@ -228,6 +227,7 @@ def index() -> HTMLResponse:
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>MoltFocus</title>
   <link rel=\"stylesheet\" href=\"/static/style.css\" />
+  <script src="/static/marked.min.js"></script>
 </head>
 <body>
   <div class=\"container\">
@@ -335,7 +335,6 @@ def api_checkin_draft(payload: dict[str, Any] = Body(...)) -> dict[str, Any]:
         items[key] = {
             "label": str(it.get("label", "")),
             "done": bool(it.get("done", False)),
-            "minutes": int(it.get("minutes", 0) or 0),
             "comment": str(it.get("comment", "")),
         }
 

@@ -62,6 +62,18 @@ async function writeFocus(payload) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
+  // Plan: preview by default
+  if (document.querySelector('#planPreview')) {
+    showPlanPreview();
+  }
+  const editBtn = document.querySelector('#planEdit');
+  const prevBtn = document.querySelector('#planPreviewBtn');
+  if (editBtn) editBtn.addEventListener('click', (e) => { e.preventDefault(); showPlanEdit(); });
+  if (prevBtn) prevBtn.addEventListener('click', (e) => { e.preventDefault(); showPlanPreview(); });
+  const planTA = document.querySelector('#plan');
+  if (planTA) planTA.addEventListener('input', debounce(renderPlanPreview, 200));
+
+
   document.querySelectorAll('input, textarea, select').forEach(el => {
     if (el.closest('[data-checkin]')) {
       el.addEventListener('input', saveDraft);
@@ -98,3 +110,34 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+
+function renderPlanPreview() {
+  const ta = document.querySelector('#plan');
+  const pv = document.querySelector('#planPreview');
+  if (!ta || !pv) return;
+  const src = ta.value || '';
+  if (window.marked) {
+    pv.innerHTML = window.marked.parse(src);
+  } else {
+    pv.textContent = src;
+  }
+}
+
+function showPlanEdit() {
+  const ta = document.querySelector('#plan');
+  const pv = document.querySelector('#planPreview');
+  if (!ta || !pv) return;
+  pv.style.display = 'none';
+  ta.style.display = 'block';
+  ta.focus();
+}
+
+function showPlanPreview() {
+  const ta = document.querySelector('#plan');
+  const pv = document.querySelector('#planPreview');
+  if (!ta || !pv) return;
+  renderPlanPreview();
+  ta.style.display = 'none';
+  pv.style.display = 'block';
+}
