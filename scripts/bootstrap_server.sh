@@ -9,7 +9,7 @@ set -euo pipefail
 # - creates systemd service
 # - prints the UI URL (via tailscale IP)
 
-REPO_URL_DEFAULT="https://github.com/JingwenGu0829/MoltScheduler.git"
+REPO_URL_DEFAULT="https://github.com/JingwenGu0829/MoltFocus.git"
 INSTALL_DIR_DEFAULT="$HOME/molt-scheduler"
 PORT_DEFAULT="8787"
 

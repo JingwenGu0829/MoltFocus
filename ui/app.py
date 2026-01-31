@@ -124,7 +124,7 @@ def _summarize_paragraph(day: str, rating: str, done_items: list[str], minutes_t
     return f"[{lead}] {day}: {body}. {advice}"
 
 
-app = FastAPI(title="MoltScheduler UI", version="0.2.0")
+app = FastAPI(title="MoltFocus UI", version="0.2.0")
 
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -176,6 +176,18 @@ def index() -> HTMLResponse:
     last_summary = state.get("lastSummary", "") or ""
     last_rating = state.get("lastRating", "") or ""
 
+    # streak history (last 30 days)
+    hist = state.get("history", []) or []
+    # show newest first
+    hist = list(hist)[-30:][::-1]
+    lines=[]
+    for e in hist:
+        d=e.get("day","?")
+        r=(e.get("rating","?") or "?").upper()
+        m=(e.get("mode","?") or "?").upper()
+        lines.append(f"{d}  {r}  ({m})")
+    history_txt = "\n".join(lines) if lines else "(no history yet)"
+
     # plan diff (prev vs current)
     diff_txt = ""
     if plan_prev_path.exists():
@@ -191,7 +203,6 @@ def index() -> HTMLResponse:
         label = cb["label"]
         d = items_by_key.get(key, {})
         done = bool(d.get("done", False))
-        minutes = int(d.get("minutes", 0) or 0)
         comment = d.get("comment", "") or ""
 
         todo_rows.append(
@@ -215,14 +226,14 @@ def index() -> HTMLResponse:
 <head>
   <meta charset=\"utf-8\" />
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-  <title>MoltScheduler</title>
+  <title>MoltFocus</title>
   <link rel=\"stylesheet\" href=\"/static/style.css\" />
 </head>
 <body>
   <div class=\"container\">
     <header class=\"top\">
       <div>
-        <h1>MoltScheduler</h1>
+        <h1>MoltFocus</h1>
         <div class=\"muted small\">Streak: <b>{streak}</b> {rating_badge}</div>
       </div>
       <div class=\"pill\"><code>{root}</code></div>
@@ -371,9 +382,6 @@ def api_finalize() -> dict[str, Any]:
     minutes_total = 0
     any_time = False
     for k, v in items.items():
-        if int(v.get("minutes", 0) or 0) > 0:
-            any_time = True
-            minutes_total += int(v.get("minutes", 0) or 0)
         if v.get("done"):
             done_items.append(str(v.get("label", "(item)")))
 
@@ -404,6 +412,19 @@ def api_finalize() -> dict[str, Any]:
 
     summary = _summarize_paragraph(today, rating, done_items, minutes_total, reflection)
 
+    # history (keep last 30 days)
+    hist = state.get("history", []) or []
+    hist.append({"day": today, "rating": rating, "mode": draft_mode, "streakCounted": bool(counts), "doneCount": done_count, "total": total_items})
+    # de-dup by day (keep last entry)
+    by_day = {}
+    for e in hist:
+        by_day[e.get("day")] = e
+    hist = list(by_day.values())
+    hist.sort(key=lambda x: x.get("day", ""))
+    hist = hist[-30:]
+    state["history"] = hist
+
+
     # prepend reflection entry
     now = datetime.now().astimezone()
     entry_lines = [
@@ -424,26 +445,17 @@ def api_finalize() -> dict[str, Any]:
 
     entry_lines += [
         "",
-        "**Time logged**",
-        f"- {minutes_total} min" if minutes_total else "- (none)",
-        "",
         "**Notes**",
     ]
 
     # include non-done items with comments/time
     notes_added = False
     for k, v in items.items():
-        minutes = int(v.get("minutes", 0) or 0)
         comment = str(v.get("comment", "")).strip()
         label = str(v.get("label", "(item)"))
-        if minutes or comment:
+        if comment:
             notes_added = True
-            bits = []
-            if minutes:
-                bits.append(f"{minutes}m")
-            if comment:
-                bits.append(comment)
-            entry_lines.append(f"- {label}: {'; '.join(bits)}")
+            entry_lines.append(f"- {label}: {comment}")
     if not notes_added:
         entry_lines.append("- (none)")
 

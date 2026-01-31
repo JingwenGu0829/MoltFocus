@@ -14,8 +14,8 @@ Open the printed auth URL on your laptop.
 
 ### Install MoltScheduler UI
 ```bash
-git clone https://github.com/JingwenGu0829/MoltScheduler.git
-cd MoltScheduler
+git clone https://github.com/JingwenGu0829/MoltFocus.git
+cd MoltFocus
 
 # PLANNER_ROOT must contain planner/ and reflections/
 export PLANNER_ROOT=/path/to/workspace_root

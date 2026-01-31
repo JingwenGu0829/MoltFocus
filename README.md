@@ -1,7 +1,7 @@
-# MoltScheduler
+# MoltFocus
 
 ```bash
-git clone https://github.com/JingwenGu0829/MoltScheduler.git
+git clone https://github.com/JingwenGu0829/MoltFocus.git
 ```
 
 Tell your agent to read:

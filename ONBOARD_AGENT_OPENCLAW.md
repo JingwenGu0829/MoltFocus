@@ -43,6 +43,9 @@ Write `planner/latest/plan.md` and ALWAYS include checkbox tasks using this exac
 - `- [ ] Thesis 2h`
 - `- [ ] Profiling 90m`
 
+Keep task labels short (the UI shows them directly).
+If you want time info, keep it in the label (e.g., `Thesis 120m`) and do NOT require the user to re-enter time elsewhere.
+
 The UI builds the to-do list by parsing these lines.
 
 ### F) Automation

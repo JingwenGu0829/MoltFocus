@@ -30,9 +30,8 @@ function collectDraft() {
     const key = row.getAttribute('data-key');
     const label = row.querySelector('[data-label]')?.textContent || '';
     const done = row.querySelector('input[type=checkbox]')?.checked || false;
-    const minutes = parseInt(row.querySelector('input[data-minutes]')?.value || '0', 10) || 0;
     const comment = row.querySelector('input[data-comment]')?.value || '';
-    items.push({ key, label, done, minutes, comment });
+    items.push({ key, label, done, comment });
   });
   const reflection = document.querySelector('#reflection')?.value || '';
   const mode = currentMode();
