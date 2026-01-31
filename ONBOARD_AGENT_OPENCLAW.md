@@ -41,6 +41,7 @@ Write/update these files in the workspace:
 ### Step 3 — Generate today’s plan
 Create/overwrite `planner/latest/plan.md`.
 - Include checkboxes for tasks in the plan using markdown:
+  IMPORTANT: use the exact format `- [ ] Task 120m` (or `- [ ] Thesis 2h`) so the UI can render a tickable to-do list.
   - `- [ ] Task (duration)`
 
 ### Step 4 — Set up cron jobs

@@ -25,3 +25,11 @@ summary{cursor:pointer}
 .badge.fair{color:#f4c95d}
 .badge.bad{color:#ff6b6b}
 .small{font-size:12px}
+
+
+/* v0.2 UI polish */
+.todo{padding:8px 10px; border:1px solid rgba(255,255,255,.10); border-radius:12px; background:rgba(0,0,0,.14); margin:10px 0}
+@media (max-width: 700px){
+  .todo{grid-template-columns: 26px 1fr;}
+  .todo input[data-minutes], .todo input[data-comment]{grid-column: 2 / -1; width:100%}
+}

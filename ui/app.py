@@ -245,10 +245,6 @@ def index() -> HTMLResponse:
         <label style=\"margin-top:14px\">Reflection (optional)</label>
         <textarea id=\"reflection\" rows=\"4\">{_escape(reflection)}</textarea>
 
-        <details style=\"margin-top:12px\">
-          <summary><b>Latest SGLang issues (optional)</b></summary>
-          <pre class=\"mono\">{_escape(issues_md or "(none yet)")}</pre>
-        </details>
       </div>
     </section>
 
