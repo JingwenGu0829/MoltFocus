@@ -212,7 +212,7 @@ def index() -> HTMLResponse:
               <div data-label>\n                <span class=\"small\">{_escape(label)}</span>
               </div>
               <input data-minutes type=\"number\" min=\"0\" step=\"5\" placeholder=\"min\" value=\"{minutes if minutes else ''}\" />
-              <input data-comment type=\"text\" placeholder=\"comment (optional)\" value=\"{_escape(comment)}\" />
+              <input data-comment type=\"text\" placeholder=\"comment\" value=\"{_escape(comment)}\" />
             </div>
             """
         )
@@ -274,7 +274,7 @@ def index() -> HTMLResponse:
         <h3 style=\"margin-top:12px\">Today’s to-do list</h3>
         {''.join(todo_rows) if todo_rows else '<div class="muted small">No checkboxes found in plan. Add tasks like <code>- [ ] ...</code> in the plan.</div>'}
 
-        <label style=\"margin-top:14px\">Reflection (optional)</label>
+        <label style=\"margin-top:14px\">Reflection</label>
         <textarea id=\"reflection\" rows=\"4\">{_escape(reflection)}</textarea>
 
       </div>
