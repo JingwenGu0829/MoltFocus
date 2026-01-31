@@ -234,7 +234,7 @@ def index() -> HTMLResponse:
     <header class=\"top\">
       <div>
         <h1>MoltFocus</h1>
-        <div class=\"muted small\">Streak: <b>{streak}</b> {rating_badge}</div>
+        <div class=\"muted small\"><details><summary style=\"cursor:pointer\">🔥 <b>{streak}</b> {rating_badge}</summary><pre class=\"mono\" style=\"margin-top:8px\">{_escape(history_txt)}</pre></details></div>
       </div>
       <div class=\"pill\"><code>{root}</code></div>
     </header>
@@ -243,11 +243,19 @@ def index() -> HTMLResponse:
       <div class=\"card\">
         <h2>Plan (edit directly)</h2>
         <form method=\"post\" action=\"/save_plan\">
-          <textarea name=\"plan_md\" rows=\"20\">{_escape(plan_md)}</textarea>
-          <div class=\"row\">
-            <div class=\"muted small\">Tip: embed tasks as markdown checkboxes: <code>- [ ] Thesis 2h</code></div>
-            <button type=\"submit\">Save</button>
+          <div class=\"row\" style=\"margin-top:0\">
+            <div class=\"muted small\">Markdown renders by default. Click Edit to modify.</div>
+            <div style=\"display:flex; gap:8px\">
+              <button id=\"planEdit\" type=\"button\">Edit</button>
+              <button id=\"planPreviewBtn\" type=\"button\">Preview</button>
+              <button type=\"submit\">Save</button>
+            </div>
           </div>
+
+          <div id=\"planPreview\" class=\"md\"></div>
+          <textarea id=\"plan\" name=\"plan_md\" rows=\"20\" style=\"display:none\">{_escape(plan_md)}</textarea>
+
+          <div class=\"muted small\" style=\"margin-top:8px\">Tip: embed tasks as markdown checkboxes: <code>- [ ] Thesis 2h</code></div>
         </form>
 
         <details style=\"margin-top:10px\" {'open' if diff_txt else ''}>
