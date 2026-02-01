@@ -306,7 +306,7 @@ def index() -> HTMLResponse:
     <footer class=\"muted small\">v0.2 · Draft auto-saves to <code>planner/latest/checkin_draft.json</code>. Nightly finalization updates streak + summary.</footer>
   </div>
 
-  <script src=\"/static/app.js\"></script>
+  <script src=\"/static/app.js?v={ASSET_V}\"></script>
 </body>
 </html>"""
 
