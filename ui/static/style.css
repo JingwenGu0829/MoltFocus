@@ -54,3 +54,13 @@ summary{cursor:pointer}
 
 .todo-title{font-size:12.5px; line-height:1.2}
 .todo-dur{margin-top:2px}
+
+
+/* yaml renderer */
+.kv{display:block; margin-top:8px}
+.kv-row{display:grid; grid-template-columns: 180px 1fr; gap:12px; padding:6px 0; border-top:1px solid rgba(255,255,255,.08)}
+.kv-row:first-child{border-top:0}
+.kv-key{color:#a9afc3; font-size:12px; word-break:break-word}
+.kv-val{font-size:12.5px}
+.kv ol.kv{margin:6px 0 6px 18px}
+@media (max-width: 700px){.kv-row{grid-template-columns: 1fr}}

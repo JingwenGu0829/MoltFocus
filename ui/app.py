@@ -67,6 +67,35 @@ def _escape(s: str) -> str:
         .replace('"', "&quot;")
     )
 
+def _render_obj(x: Any) -> str:
+    """Render a Python/YAML object into compact HTML (read-only)."""
+    if x is None:
+        return '<span class="muted">(null)</span>'
+    if isinstance(x, bool):
+        return '<span class="pill">true</span>' if x else '<span class="pill">false</span>'
+    if isinstance(x, (int, float)):
+        return f'<span class="pill">{x}</span>'
+    if isinstance(x, str):
+        s = _escape(x)
+        # short strings inline
+        if len(s) <= 80 and "\n" not in s:
+            return f'<span>{s}</span>'
+        return f'<pre class="mono">{s}</pre>'
+    if isinstance(x, list):
+        if not x:
+            return '<span class="muted">(empty)</span>'
+        items = ''.join([f'<li>{_render_obj(v)}</li>' for v in x])
+        return f'<ol class="kv">{items}</ol>'
+    if isinstance(x, dict):
+        if not x:
+            return '<span class="muted">(empty)</span>'
+        rows = []
+        for k, v in x.items():
+            rows.append(f'<div class="kv-row"><div class="kv-key">{_escape(str(k))}</div><div class="kv-val">{_render_obj(v)}</div></div>')
+        return '<div class="kv">' + ''.join(rows) + '</div>'
+    return f'<span>{_escape(str(x))}</span>'
+
+
 
 def _extract_checkboxes(plan_md: str) -> list[dict[str, str]]:
     # Extract markdown tasks like:
@@ -157,6 +186,15 @@ def index() -> HTMLResponse:
 
     profile_txt = _read_text(profile_path)
     tasks_txt = _read_text(tasks_path)
+
+    try:
+        profile_obj = yaml.safe_load(profile_txt) if profile_txt.strip() else {}
+    except Exception:
+        profile_obj = {"_parse_error": "failed to parse YAML"}
+    try:
+        tasks_obj = yaml.safe_load(tasks_txt) if tasks_txt.strip() else {}
+    except Exception:
+        tasks_obj = {"_parse_error": "failed to parse YAML"}
 
     checkboxes = _extract_checkboxes(plan_md)
 
@@ -309,9 +347,9 @@ def index() -> HTMLResponse:
       <details>
         <summary><b>Meta files</b> <span class="muted small">(profile/tasks)</span></summary>
         <div class="muted small" style="margin-top:8px">planner/profile.yaml</div>
-        <pre class="mono">{_escape(profile_txt or '(missing)')}</pre>
+        {_render_obj(profile_obj) if profile_txt.strip() else '<span class="muted">(missing)</span>'}
         <div class="muted small" style="margin-top:8px">planner/tasks.yaml</div>
-        <pre class="mono">{_escape(tasks_txt or '(missing)')}</pre>
+        {_render_obj(tasks_obj) if tasks_txt.strip() else '<span class="muted">(missing)</span>'}
       </details>
     </section>
 <footer class=\"muted small\">v0.2 · Draft auto-saves to <code>planner/latest/checkin_draft.json</code>. Nightly finalization updates streak + summary.</footer>
