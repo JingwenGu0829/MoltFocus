@@ -1,0 +1,13 @@
+{
+  "day": "2026-02-09",
+  "updatedAt": "2026-02-09T17:30:00",
+  "mode": "commit",
+  "items": {
+    "line-19": {"label": "Deadline paper: experiment writeup 2h", "done": true, "comment": "finished methods + half of results"},
+    "line-20": {"label": "Important project: code review 90m", "done": true, "comment": ""},
+    "line-21": {"label": "Daily maintenance 20m", "done": true, "comment": "inbox zero done"},
+    "line-22": {"label": "Deadline paper: results figures 90m", "done": false, "comment": "moved to tomorrow — waiting on GPU run"},
+    "line-23": {"label": "Important project: refactor auth 50m", "done": false, "comment": ""}
+  },
+  "reflection": ""
+}

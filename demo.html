@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MoltFocus — Demo</title>
+  <style>
+body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial; margin:0; background:#0b0c0f; color:#f6f7fb}
+*{box-sizing:border-box}
+.container{max-width:1100px; margin:0 auto; padding:16px}
+.top{display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:12px}
+.muted{color:#a9afc3}
+.small{font-size:12px}
+.grid{display:grid; grid-template-columns: 1.05fr .95fr; gap:12px}
+@media (max-width: 900px){.grid{grid-template-columns:1fr}}
+.card{border:1px solid rgba(255,255,255,.12); border-radius:16px; background:rgba(255,255,255,.04); padding:12px; margin-bottom:12px; overflow:hidden}
+
+h1{font-size:26px; margin:0 0 6px}
+h2{font-size:18px; margin:0 0 10px}
+h3{font-size:14px; margin:12px 0 6px}
+
+textarea{display:block; width:100%; max-width:100%; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.25); color:#f6f7fb; padding:10px; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12.5px; line-height:1.35}
+
+button{border:1px solid rgba(255,255,255,.20); background:rgba(255,255,255,.08); color:#f6f7fb; padding:8px 10px; border-radius:12px; cursor:pointer; font-size:12.5px}
+button:hover{opacity:.9}
+
+label{display:block; margin:10px 0 6px; font-size:12.5px; color:#a9afc3}
+.row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px}
+
+.planbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin:8px 0 10px}
+.planbar-actions{display:flex; gap:10px}
+
+.pill{border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:7px 9px; font-size:12px; color:#a9afc3; background:rgba(255,255,255,.03)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:12px; color:#f6f7fb}
+pre.mono{white-space:pre-wrap; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); padding:10px; max-height:240px; overflow:auto; font-size:12px}
+summary{cursor:pointer}
+
+.todo{display:grid; grid-template-columns: 22px 1fr 1fr; gap:10px; align-items:center; padding:10px; border:1px solid rgba(255,255,255,.10); border-radius:12px; background:rgba(0,0,0,.14); margin:10px 0}
+.todo [data-label]{min-width:0; font-size:12.5px; line-height:1.2}
+.todo input[data-comment]{width:100%; border-radius:10px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.22); color:#f6f7fb; padding:8px; font-size:12.5px}
+@media (max-width: 700px){
+  .todo{grid-template-columns: 22px 1fr;}
+  .todo input[data-comment]{grid-column: 2 / -1;}
+}
+
+.badge{font-weight:650}
+.badge.good{color:#62d98f}
+.badge.fair{color:#f4c95d}
+.badge.bad{color:#ff6b6b}
+
+.md{padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18); font-size:13px}
+.md h1{font-size:22px; margin:8px 0 6px}
+.md h2{font-size:16px; margin:10px 0 6px}
+.md h3{font-size:13px; margin:10px 0 6px}
+.md p{margin:6px 0}
+.md ul{margin:6px 0 6px 18px}
+.md code{background:rgba(255,255,255,.06); padding:2px 6px; border-radius:8px}
+.md pre{background:rgba(0,0,0,.28); padding:10px; border-radius:12px; overflow:auto}
+
+.todo-title{font-size:12.5px; line-height:1.2}
+.todo-dur{margin-top:2px}
+
+.kv{display:block; margin-top:8px}
+.kv-row{display:grid; grid-template-columns: 180px 1fr; gap:12px; padding:6px 0; border-top:1px solid rgba(255,255,255,.08)}
+.kv-row:first-child{border-top:0}
+.kv-key{color:#a9afc3; font-size:12px; word-break:break-word}
+.kv-val{font-size:12.5px}
+.kv ol.kv{margin:6px 0 6px 18px}
+@media (max-width: 700px){.kv-row{grid-template-columns: 1fr}}
+
+.demo-banner{background:rgba(98,217,143,.10); border:1px solid rgba(98,217,143,.25); border-radius:12px; padding:10px 14px; margin-bottom:12px; font-size:13px; color:#62d98f; text-align:center}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <div class="demo-banner">
+      This is a static demo — the real product auto-saves, syncs with your agent, and tracks streaks over time.
+    </div>
+
+    <header class="top">
+      <div>
+        <h1>MoltFocus</h1>
+        <div class="muted small"><details><summary style="cursor:pointer">🔥 <b>3</b> <span class="badge good">GOOD</span></summary><pre class="mono" style="margin-top:8px">demo-day-3  GOOD  (COMMIT)
+demo-day-2  FAIR  (COMMIT)
+demo-day-1  GOOD  (RECOVERY)</pre></details></div>
+      </div>
+      <div class="pill"><code>~/planner</code></div>
+    </header>
+
+    <section class="grid">
+      <!-- ── Plan card ── -->
+      <div class="card">
+        <h2>Plan (edit directly)</h2>
+        <div class="planbar">
+          <div class="muted small">Click plan to edit; click outside to preview.</div>
+          <div class="planbar-actions">
+            <button id="savePlan" type="button">Save</button>
+          </div>
+        </div>
+
+        <div id="planPane">
+          <div id="planPreview" class="md"></div>
+          <textarea id="plan" rows="20" style="display:none"># Plan — 2026-02-09
+
+## Top priorities
+1) Deadline paper — finish experiment section
+2) Important project — weekly code review + refactor auth module
+3) Daily maintenance — inbox zero, standup notes
+
+## Schedule
+- 09:00–11:00 Deadline paper: experiment writeup 2h
+- 11:10–11:50 Workout
+- 11:50–12:30 Lunch
+- 13:00–14:30 Important project: code review 90m
+- 14:30–15:20 Important project: refactor auth module 50m
+- 15:30–16:50 Example class
+- 17:10–17:30 Daily maintenance 20m
+- 18:00–19:30 Deadline paper: results figures 90m
+
+## Minimum viable day
+- [ ] Deadline paper: experiment writeup 2h
+- [ ] Important project: code review 90m
+- [ ] Daily maintenance 20m
+- [ ] Deadline paper: results figures 90m
+- [ ] Important project: refactor auth 50m
+
+## Carryover
+- Related work section (deferred from yesterday — low urgency)</textarea>
+        </div>
+
+        <div class="muted small" style="margin-top:8px">Tip: embed tasks as markdown checkboxes: <code>- [ ] Thesis 2h</code></div>
+
+        <details style="margin-top:10px">
+          <summary><b>Plan diff (since last save)</b></summary>
+          <pre class="mono">--- plan_prev
++++ plan
+@@ -1,4 +1,4 @@
+ # Plan — 2026-02-09
+
+ ## Top priorities
+-1) Deadline paper — finish intro section
++1) Deadline paper — finish experiment section</pre>
+        </details>
+      </div>
+
+      <!-- ── Check-in card ── -->
+      <div class="card" data-checkin>
+        <h2>Check-in (auto-saves)</h2>
+        <div class="row" style="margin-top:8px">
+          <div class="muted small">Mode:</div>
+          <div>
+            <label class="muted small" style="display:inline-flex; gap:6px; align-items:center; margin-right:10px">
+              <input type="radio" name="mode" value="commit" checked /> Commit
+            </label>
+            <label class="muted small" style="display:inline-flex; gap:6px; align-items:center">
+              <input type="radio" name="mode" value="recovery" /> Recovery
+            </label>
+          </div>
+        </div>
+        <div class="muted small">No submit needed. Status: <span id="saveStatus">Demo</span> <button id="manualSave" type="button" disabled>Save now</button></div>
+
+        <h3 style="margin-top:12px">Today's to-do list</h3>
+
+        <div class="todo" data-item-row data-key="line-19">
+          <input type="checkbox" checked />
+          <div data-label>
+            <div class="todo-title">Deadline paper: experiment writeup</div><div class="todo-dur muted small">2h</div>
+          </div>
+          <input data-comment type="text" placeholder="comment" value="finished methods + half of results" />
+        </div>
+
+        <div class="todo" data-item-row data-key="line-20">
+          <input type="checkbox" checked />
+          <div data-label>
+            <div class="todo-title">Important project: code review</div><div class="todo-dur muted small">90m</div>
+          </div>
+          <input data-comment type="text" placeholder="comment" value="" />
+        </div>
+
+        <div class="todo" data-item-row data-key="line-21">
+          <input type="checkbox" checked />
+          <div data-label>
+            <div class="todo-title">Daily maintenance</div><div class="todo-dur muted small">20m</div>
+          </div>
+          <input data-comment type="text" placeholder="comment" value="inbox zero done" />
+        </div>
+
+        <div class="todo" data-item-row data-key="line-22">
+          <input type="checkbox" />
+          <div data-label>
+            <div class="todo-title">Deadline paper: results figures</div><div class="todo-dur muted small">90m</div>
+          </div>
+          <input data-comment type="text" placeholder="comment" value="moved to tomorrow — waiting on GPU run" />
+        </div>
+
+        <div class="todo" data-item-row data-key="line-23">
+          <input type="checkbox" />
+          <div data-label>
+            <div class="todo-title">Important project: refactor auth</div><div class="todo-dur muted small">50m</div>
+          </div>
+          <input data-comment type="text" placeholder="comment" value="" />
+        </div>
+
+        <label style="margin-top:14px">Reflection</label>
+        <textarea id="reflection" rows="4"></textarea>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Yesterday summary</h2>
+      <div class="muted">[Good] Demo day: done 3/4 items. Lit review ran over but productive. CI fix closed. Protect morning block for experiments tomorrow.</div>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary><b>Meta files</b> <span class="muted small">(profile/tasks)</span></summary>
+        <div class="muted small" style="margin-top:8px">planner/profile.yaml</div>
+        <pre class="mono"># Example profile (edit for your life)
+
+timezone: America/Los_Angeles
+wake_time: "08:30"
+daily_plan_delivery_time: "08:50"
+
+work_blocks:
+  - "09:00-11:00"
+  - "13:00-17:00"
+  - "18:00-20:00"
+
+fixed_routines:
+  workout:
+    window: "11:10-11:50"
+    duration_min: 40
+  lunch:
+    window: "11:50-12:30"
+
+commute:
+  typical_one_way_min: 20
+
+weekly_fixed_events:
+  - name: "Example class"
+    day: tue
+    time: "15:30-16:50"
+    location: campus
+    commute_min_each_way: 20</pre>
+        <div class="muted small" style="margin-top:8px">planner/tasks.yaml</div>
+        <pre class="mono">week_start: "mon"
+
+tasks:
+  - id: important-project
+    title: "Important project"
+    type: weekly_budget
+    priority: 8
+    status: active
+    target_hours_per_week: 8
+    min_chunk_minutes: 60
+
+  - id: deadline-paper
+    title: "Deadline paper"
+    type: deadline_project
+    priority: 10
+    status: active
+    remaining_hours: 12
+    min_chunk_minutes: 60
+    max_chunk_minutes: 180
+
+  - id: maintenance
+    title: "Daily maintenance"
+    type: daily_ritual
+    priority: 5
+    status: active
+    estimated_minutes_per_day: 10</pre>
+      </details>
+    </section>
+
+    <footer class="muted small">v0.2 · Draft auto-saves to <code>planner/latest/checkin_draft.json</code>. Nightly finalization updates streak + summary.</footer>
+  </div>
+
+  <script>
+  // Plan preview rendering (same as real app)
+  document.addEventListener('DOMContentLoaded', function() {
+    var ta = document.querySelector('#plan');
+    var pv = document.querySelector('#planPreview');
+    if (ta && pv && window.marked) {
+      pv.innerHTML = window.marked.parse(ta.value);
+      ta.style.display = 'none';
+      pv.style.display = 'block';
+
+      pv.addEventListener('click', function() {
+        pv.style.display = 'none';
+        ta.style.display = 'block';
+        ta.focus();
+      });
+
+      ta.addEventListener('blur', function() {
+        pv.innerHTML = window.marked.parse(ta.value);
+        ta.style.display = 'none';
+        pv.style.display = 'block';
+      });
+
+      ta.addEventListener('input', function() {
+        pv.innerHTML = window.marked.parse(ta.value);
+      });
+    }
+  });
+  </script>
+</body>
+</html>

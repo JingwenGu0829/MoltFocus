@@ -413,7 +413,7 @@ def index(username: str = Depends(get_current_user)) -> HTMLResponse:
             f"""
             <div class=\"todo\" data-item-row data-key=\"{_escape(key)}\">
               <input type=\"checkbox\" {'checked' if done else ''} />
-              <div data-label>\n                <div class=\"todo-title\">{_escape(title)}</div>{f"<div class=\"todo-dur muted small\">{_escape(dur)}</div>" if dur else ""}
+              <div data-label>\n                <div class=\"todo-title\">{_escape(title)}</div>{f'<div class="todo-dur muted small">{_escape(dur)}</div>' if dur else ""}
               </div>
               <input data-comment type=\"text\" placeholder=\"comment\" value=\"{_escape(comment)}\" />
             </div>
