@@ -29,6 +29,8 @@ MoltFocus is designed around two principles:
 
 Everything is backed by plain files (YAML, JSON, Markdown) — inspectable, version-controllable, and owned by you.
 
+
+
 ## Get started
 
 ```bash

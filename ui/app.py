@@ -592,6 +592,11 @@ def api_finalize(username: str = Depends(get_current_user)) -> dict[str, Any]:
     if draft.get("day") != today:
         return {"ok": False, "reason": "no-draft-for-today", "today": today}
 
+    # Idempotency guard: a second call on the same day should be a no-op.
+    state = _read_json(state_path) if state_path.exists() else {}
+    if state.get("lastFinalizedDate") == today:
+        return {"ok": True, "day": today, "already_finalized": True}
+
     draft_mode = (draft.get("mode", "commit") or "commit").strip().lower()
     if draft_mode not in {"commit","recovery"}:
         draft_mode = "commit"
@@ -625,7 +630,6 @@ def api_finalize(username: str = Depends(get_current_user)) -> dict[str, Any]:
     if draft_mode == "recovery":
         counts = counts or (len(reflection.strip()) >= 30)
 
-    state = _read_json(state_path) if state_path.exists() else {}
     last_streak_date = state.get("lastStreakDate")
     streak = int(state.get("streak", 0) or 0)
 
