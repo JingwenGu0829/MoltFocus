@@ -132,6 +132,7 @@ sleep 2
 
 if kill -0 "$SERVER_PID" 2>/dev/null; then
   echo "$(green '✓') Server running at $(bold "http://localhost:$PORT")"
+  echo "$(dim "  (bound on $HOST:$PORT)")"
 else
   echo "Server failed to start. Check logs above." >&2
   exit 1
@@ -144,6 +145,9 @@ echo "────────────────────────�
 if [ "$MODE" = "demo" ]; then
   echo ""
   echo "  $(bold 'Demo is live!') Open $(cyan "http://localhost:$PORT") in your browser."
+  echo "  $(dim "If this server is remote, create an SSH tunnel:")"
+  echo "  $(dim "ssh -N -L $PORT:127.0.0.1:$PORT <user>@<server>")"
+  echo "  $(dim "Then open http://localhost:$PORT on your laptop.")"
   echo ""
   echo "  When you're ready for the real thing, re-run:"
   echo "  $(dim './setup.sh')  and choose $(bold 'Full setup')."
@@ -151,6 +155,9 @@ if [ "$MODE" = "demo" ]; then
 else
   echo ""
   echo "  $(bold 'Server is live!') Open $(cyan "http://localhost:$PORT") in your browser."
+  echo "  $(dim "If this server is remote, create an SSH tunnel:")"
+  echo "  $(dim "ssh -N -L $PORT:127.0.0.1:$PORT <user>@<server>")"
+  echo "  $(dim "Then open http://localhost:$PORT on your laptop.")"
   echo ""
   echo "  $(bold 'Next step:') Tell your agent to read:"
   echo "  $(cyan 'ONBOARD_AGENT_OPENCLAW.md')"

@@ -10,10 +10,14 @@
 ---
 
 <p align="center">
-  <img src="assets/demo.png" alt="MoltFocus UI" width="780" />
+  <img src="assets/demo.png" alt="MoltFocus UI"  />
 </p>
 
 ## Why this exists
+
+<p align="center">
+  <img src="assets/poster.png" alt="MoltFocus Showcase"  />
+</p>
 
 Calendar apps force every task into a time slot. But real priorities are continuous — a paper deadline, a weekly code review, an optional social event, a habit you're trying to keep. Manually bucketing these into rigid calendars creates **friction**, and friction is why planning tools get abandoned.
 
@@ -35,7 +39,25 @@ cd MoltFocus
 
 That's it. The CLI installs dependencies, asks if you want **demo mode** (sample data, instant UI) or **full setup** (your agent personalizes everything), and starts the server.
 
+If the server stops later, restart it:
+
+```bash
+cd MoltFocus
+export PLANNER_ROOT=/path/to/workspace_root
+export HOST=0.0.0.0
+export PORT=8787
+./scripts/run_ui.sh
+```
+
+Then:
+- same machine: open `http://localhost:8787`
+- remote server: create tunnel `ssh -N -L 8787:127.0.0.1:8787 <user>@<server>` then open `http://localhost:8787` on your personal computer
+
 For full setup, point your agent at `ONBOARD_AGENT_OPENCLAW.md` — it handles the rest.
+
+## How it works (Detailed Features)
+
+MoltFocus spans a variety of features such as streak system and reflections system, and more coming up on the way. The doc for detailed features are still under development.
 
 ---
 

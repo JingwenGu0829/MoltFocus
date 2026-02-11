@@ -34,6 +34,18 @@ export PORT=8787
 - Open UI:
   `http://<SERVER_TAILSCALE_IP>:8787`
 
+### If you only have SSH access (no Tailscale)
+From your laptop:
+```bash
+ssh -N -L 8787:127.0.0.1:8787 <user>@<server-ip-or-hostname>
+```
+Then open:
+`http://localhost:8787`
+
+Notes:
+- `0.0.0.0` means "listen on all server interfaces"; it is not a URL to open in a browser.
+- `localhost` always means "this machine", so on your laptop it refers to your laptop unless tunneled.
+
 ## 3) Agent onboarding
 Paste `ONBOARD_AGENT_OPENCLAW.md` into your OpenClaw agent.
 It will:
