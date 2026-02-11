@@ -44,6 +44,7 @@ fi
 
 source .venv/bin/activate
 uv pip install -r ui/requirements.txt --quiet 2>/dev/null
+uv pip install -r cli/requirements.txt --quiet 2>/dev/null
 echo "$(green '✓') Dependencies installed."
 echo ""
 
@@ -72,6 +73,12 @@ PLANNER_ROOT="${PLANNER_ROOT:-$HOME/planner}"
 if [ "$MODE" = "demo" ]; then
   echo "$(cyan 'Setting up demo workspace...')"
 
+  TODAY_ISO=$(date +%Y-%m-%d)
+  NOW_ISO=$(date +%Y-%m-%dT%H:%M:%S)
+  YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
+  TWO_DAYS_AGO=$(date -d "2 days ago" +%Y-%m-%d)
+  THREE_DAYS_AGO=$(date -d "3 days ago" +%Y-%m-%d)
+
   # Copy template into PLANNER_ROOT
   mkdir -p "$PLANNER_ROOT/planner/latest"
   mkdir -p "$PLANNER_ROOT/reflections"
@@ -82,19 +89,24 @@ if [ "$MODE" = "demo" ]; then
   cp "$ROOT_DIR/template/planner/latest/checkin_draft.json"  "$PLANNER_ROOT/planner/latest/checkin_draft.json"
   cp "$ROOT_DIR/template/reflections/reflections.md"         "$PLANNER_ROOT/reflections/reflections.md"
 
+  # Patch demo files to use today's actual date
+  sed -i "s/2026-02-09/$TODAY_ISO/g" "$PLANNER_ROOT/planner/latest/plan.md"
+  sed -i "s/2026-02-09/$TODAY_ISO/g; s/\"updatedAt\": \"[^\"]*\"/\"updatedAt\": \"$NOW_ISO\"/" "$PLANNER_ROOT/planner/latest/checkin_draft.json"
+  sed -i "s/2026-02-08/$YESTERDAY/g; s/2026-02-07/$TWO_DAYS_AGO/g; s/2026-02-06/$THREE_DAYS_AGO/g" "$PLANNER_ROOT/reflections/reflections.md"
+
   # Demo state with streak + history so the UI looks alive
-  cat > "$PLANNER_ROOT/planner/state.json" <<'STATE'
+  cat > "$PLANNER_ROOT/planner/state.json" <<STATE
 {
   "streak": 3,
-  "lastStreakDate": null,
+  "lastStreakDate": "$YESTERDAY",
   "lastRating": "good",
   "lastMode": "commit",
   "lastSummary": "[Good] Demo day: finished Deadline paper 2h, Important project 90m. Solid focus. Keep it up tomorrow.",
-  "lastFinalizedDate": null,
+  "lastFinalizedDate": "$YESTERDAY",
   "history": [
-    {"day": "demo-day-3", "rating": "good",  "mode": "commit",   "streakCounted": true, "doneCount": 3, "total": 4},
-    {"day": "demo-day-2", "rating": "fair",   "mode": "commit",   "streakCounted": true, "doneCount": 2, "total": 5},
-    {"day": "demo-day-1", "rating": "good",  "mode": "recovery", "streakCounted": true, "doneCount": 2, "total": 3}
+    {"day": "$THREE_DAYS_AGO", "rating": "good",  "mode": "recovery", "streakCounted": true, "doneCount": 2, "total": 3},
+    {"day": "$TWO_DAYS_AGO", "rating": "fair",   "mode": "commit",   "streakCounted": true, "doneCount": 2, "total": 5},
+    {"day": "$YESTERDAY", "rating": "good",  "mode": "commit",   "streakCounted": true, "doneCount": 3, "total": 4}
   ]
 }
 STATE
@@ -144,7 +156,13 @@ echo "────────────────────────�
 
 if [ "$MODE" = "demo" ]; then
   echo ""
-  echo "  $(bold 'Demo is live!') Open $(cyan "http://localhost:$PORT") in your browser."
+  echo "  $(bold 'Demo is live!')"
+  echo ""
+  echo "  $(bold 'TUI (recommended):') Run $(cyan './moltfocus') — full interactive app, no tunnel needed."
+  echo "  $(dim "Or add it to your PATH:  ln -s $(pwd)/moltfocus ~/.local/bin/moltfocus")"
+  echo "  $(dim "Then run 'moltfocus' from anywhere on the server.")"
+  echo ""
+  echo "  $(bold 'Web UI:') Open $(cyan "http://localhost:$PORT") in your browser."
   echo "  $(dim "If this server is remote, create an SSH tunnel:")"
   echo "  $(dim "ssh -N -L $PORT:127.0.0.1:$PORT <user>@<server>")"
   echo "  $(dim "Then open http://localhost:$PORT on your laptop.")"
@@ -154,7 +172,13 @@ if [ "$MODE" = "demo" ]; then
   echo ""
 else
   echo ""
-  echo "  $(bold 'Server is live!') Open $(cyan "http://localhost:$PORT") in your browser."
+  echo "  $(bold 'Server is live!')"
+  echo ""
+  echo "  $(bold 'TUI (recommended):') Run $(cyan './moltfocus') — full interactive app, no tunnel needed."
+  echo "  $(dim "Or add it to your PATH:  ln -s $(pwd)/moltfocus ~/.local/bin/moltfocus")"
+  echo "  $(dim "Then run 'moltfocus' from anywhere on the server.")"
+  echo ""
+  echo "  $(bold 'Web UI:') Open $(cyan "http://localhost:$PORT") in your browser."
   echo "  $(dim "If this server is remote, create an SSH tunnel:")"
   echo "  $(dim "ssh -N -L $PORT:127.0.0.1:$PORT <user>@<server>")"
   echo "  $(dim "Then open http://localhost:$PORT on your laptop.")"

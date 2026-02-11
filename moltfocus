@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# MoltFocus CLI — wrapper that activates the venv and runs the CLI.
+# Put this on your PATH or symlink it:
+#   ln -s /path/to/MoltFocus/moltfocus ~/.local/bin/moltfocus
+
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")" && pwd)"
+
+# Activate venv if it exists
+if [ -f "$SCRIPT_DIR/.venv/bin/activate" ]; then
+    source "$SCRIPT_DIR/.venv/bin/activate"
+fi
+
+exec python "$SCRIPT_DIR/cli/moltfocus.py" "$@"

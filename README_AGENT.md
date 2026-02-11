@@ -68,12 +68,18 @@ Plan format:
 5) Send the plan to the human.
 
 ## 3) End-of-day update workflow
-When the user reports what they did:
-1) Append a compressed entry to `reflections/reflections.md`.
-2) Update `tasks.yaml`:
-- decrement `remaining_hours` when user spends time on a deadline project
-- decrement weekly budgets / update state tracking
-- mark tasks complete when the user says they’re done
+
+The nightly finalize step (`POST /api/finalize` or TUI `f` key) automatically:
+1) Appends a structured entry to `reflections/reflections.md`.
+2) Updates streak, rating, and summary in `planner/state.json`.
+3) Clears the draft (`planner/latest/checkin_draft.json`).
+
+**Task updates are the agent's responsibility** (not automated by finalize):
+- Decrement `remaining_hours` for deadline projects based on time spent.
+- Track weekly budget hours.
+- Mark tasks complete when the user confirms.
+
+Use `POST /api/update_task` with `{"task_id": "...", "updates": {...}}` or edit `planner/tasks.yaml` directly.
 
 ## 4) Optional modules
 - “Repo issue scan” (e.g., SGLang): write to `planner/latest/sglang_issues.md` and send as a file.

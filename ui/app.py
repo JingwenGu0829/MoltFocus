@@ -587,6 +587,7 @@ def api_finalize(username: str = Depends(get_current_user)) -> dict[str, Any]:
     ref_path = root / "reflections" / "reflections.md"
 
     today = _today_str()
+    user_tz = _get_user_timezone()
     draft = _read_json(draft_path) if draft_path.exists() else {}
     if draft.get("day") != today:
         return {"ok": False, "reason": "no-draft-for-today", "today": today}
@@ -606,9 +607,15 @@ def api_finalize(username: str = Depends(get_current_user)) -> dict[str, Any]:
     total_items = len(items)
     done_count = len(done_items)
 
-    # Plan changed heuristic: if plan_prev exists and differs.
     plan_prev_path = root / "planner" / "latest" / "plan_prev.md"
-    plan_changed = plan_prev_path.exists() and _read_text(plan_prev_path).strip() != ""
+    plan_path = root / "planner" / "latest" / "plan.md"
+    plan_cur = _read_text(plan_path).strip()
+    if plan_prev_path.exists():
+        plan_changed = _read_text(plan_prev_path).strip() != plan_cur
+    elif plan_cur:
+        plan_changed = True   # no prev but plan exists — first plan of day
+    else:
+        plan_changed = False
 
     rating = _compute_rating(done_count, total_items, reflection, False)
     # recovery mode is more forgiving
@@ -624,8 +631,19 @@ def api_finalize(username: str = Depends(get_current_user)) -> dict[str, Any]:
 
     if counts:
         if last_streak_date != today:
-            # naive streak increment (doesn't check gaps for v0)
-            streak += 1
+            if last_streak_date is not None:
+                today_date = datetime.now(user_tz).date()
+                try:
+                    last_date = date.fromisoformat(last_streak_date)
+                    gap = (today_date - last_date).days
+                    if gap > 1:
+                        streak = 1  # reset — missed day(s)
+                    else:
+                        streak += 1  # consecutive
+                except (ValueError, TypeError):
+                    streak = 1
+            else:
+                streak = 1  # first ever finalize
             state["lastStreakDate"] = today
 
     summary = _summarize_paragraph(today, rating, done_items, 0, reflection)
@@ -644,7 +662,6 @@ def api_finalize(username: str = Depends(get_current_user)) -> dict[str, Any]:
 
 
     # prepend reflection entry
-    user_tz = _get_user_timezone()
     now = datetime.now(user_tz)
     entry_lines = [
         f"## {today}",

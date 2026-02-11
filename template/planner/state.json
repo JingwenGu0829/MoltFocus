@@ -1,7 +1,9 @@
 {
-  "lastDailyPlanDate": null,
-  "week": {
-    "start": null,
-    "remainingHours": {}
-  }
+  "streak": 0,
+  "lastStreakDate": null,
+  "lastRating": null,
+  "lastMode": null,
+  "lastSummary": null,
+  "lastFinalizedDate": null,
+  "history": []
 }
