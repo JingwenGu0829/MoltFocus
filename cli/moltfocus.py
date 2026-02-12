@@ -3,15 +3,13 @@
 
 from __future__ import annotations
 
-import fcntl
-import json
-import os
-import re
 import sys
-import tempfile
-from datetime import datetime, date
 from pathlib import Path
-from zoneinfo import ZoneInfo
+
+# ── Ensure project root is on sys.path so `from core import ...` works ──
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 import yaml
 from textual import on, work
@@ -31,290 +29,42 @@ from textual.widgets import (
     TextArea,
 )
 
-
-# ── Data layer (shared with ui/app.py) ────────────────────────
-
-
-def _root() -> Path:
-    return (
-        Path(os.environ.get("PLANNER_ROOT", str(Path.home() / "planner")))
-        .expanduser()
-        .resolve()
-    )
-
-
-def _read(path: Path) -> str:
-    return path.read_text("utf-8") if path.exists() else ""
-
-
-def _read_json(path: Path) -> dict:
-    return json.loads(path.read_text("utf-8")) if path.exists() else {}
-
-
-def _write_json(path: Path, data: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp_", suffix=".json")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            try:
-                f.write(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-                f.flush()
-                os.fsync(f.fileno())
-            finally:
-                fcntl.flock(f, fcntl.LOCK_UN)
-        os.rename(tmp, path)
-    except Exception:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
+# ── Core library imports (replaces ~280 lines of duplicated data layer) ──
+from core import (
+    workspace_root,
+    get_user_timezone,
+    today_str,
+    now_local,
+    read_text,
+    read_json,
+    write_json_atomic,
+    write_text_atomic,
+    extract_checkboxes,
+    finalize_day,
+    load_tasks,
+)
+from core.workspace import (
+    plan_path,
+    draft_path,
+    state_path,
+    plan_prev_path,
+)
 
 
-def _write_text_atomic(path: Path, content: str) -> None:
-    """Atomic text file write — temp file + flock + rename."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".tmp_", suffix=".txt")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            fcntl.flock(f, fcntl.LOCK_EX)
-            try:
-                f.write(content)
-                f.flush()
-                os.fsync(f.fileno())
-            finally:
-                fcntl.flock(f, fcntl.LOCK_UN)
-        os.rename(tmp, path)
-    except Exception:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
-
-
-def _tz() -> ZoneInfo:
-    try:
-        txt = _read(_root() / "planner" / "profile.yaml")
-        if txt.strip():
-            p = yaml.safe_load(txt)
-            if isinstance(p, dict) and "timezone" in p:
-                return ZoneInfo(p["timezone"])
-    except Exception:
-        pass
-    return ZoneInfo("UTC")
-
-
-def _today() -> str:
-    return datetime.now(_tz()).date().isoformat()
-
-
-def _checkboxes(plan_md: str) -> list[dict]:
-    out = []
-    for i, line in enumerate(plan_md.splitlines()):
-        m = re.match(r"^\s*[-*]\s*\[([ xX])\]\s+(.*)$", line)
-        if m:
-            out.append(
-                {
-                    "key": f"line-{i}",
-                    "label": m.group(2).strip(),
-                    "checked": m.group(1).strip().lower() == "x",
-                }
-            )
-    return out
-
+# ── Draft helpers ─────────────────────────────────────────────
 
 def _load_draft() -> dict:
-    draft = _read_json(_root() / "planner" / "latest" / "checkin_draft.json")
-    if draft.get("day") != _today():
-        draft = {"day": _today(), "mode": "commit", "items": {}, "reflection": ""}
+    root = workspace_root()
+    draft = read_json(draft_path(root))
+    if draft.get("day") != today_str():
+        draft = {"day": today_str(), "mode": "commit", "items": {}, "reflection": ""}
     return draft
 
 
 def _save_draft(draft: dict) -> None:
-    draft["updatedAt"] = datetime.now(_tz()).isoformat(timespec="seconds")
-    _write_json(_root() / "planner" / "latest" / "checkin_draft.json", draft)
-
-
-def _compute_rating(done_count: int, total_items: int, reflection: str, any_time: bool) -> str:
-    refl = (reflection or "").strip()
-    if done_count >= max(1, total_items // 2) or (done_count >= 2) or (any_time and done_count >= 1):
-        return "good"
-    if done_count >= 1 or len(refl) >= 30:
-        return "fair"
-    return "bad"
-
-
-def _counts_for_streak(done_count: int, reflection: str, plan_changed: bool) -> bool:
-    return done_count >= 1 or len((reflection or "").strip()) >= 30 or plan_changed
-
-
-def _summarize_paragraph(day: str, rating: str, done_items: list[str], minutes_total: int, reflection: str) -> str:
-    lead = {"good": "Good", "fair": "Fair", "bad": "Bad"}[rating]
-    parts = []
-    if done_items:
-        top = done_items[:3]
-        more = "" if len(done_items) <= 3 else f" (+{len(done_items)-3} more)"
-        parts.append(f"done: {', '.join(top)}{more}")
-    if minutes_total > 0:
-        parts.append(f"logged ~{minutes_total} min")
-    refl = (reflection or "").strip()
-    if refl:
-        parts.append("reflection recorded")
-    body = "; ".join(parts) if parts else "no notable progress logged"
-    advice = {
-        "good": "Keep the momentum; protect one deep block early tomorrow.",
-        "fair": "Aim for one deeper block next; reduce context switching.",
-        "bad": "Reset: pick one small win + one deep block tomorrow.",
-    }[rating]
-    return f"[{lead}] {day}: {body}. {advice}"
-
-
-def _prepend_reflection(ref_path: Path, entry_md: str) -> None:
-    existing = _read(ref_path)
-    if existing.strip() == "":
-        existing = "# Reflections (rolling)\n\nAppend newest entries at the top.\n\n---\n\n"
-    marker = "---\n\n"
-    idx = existing.find(marker)
-    if idx != -1:
-        head = existing[: idx + len(marker)]
-        tail = existing[idx + len(marker) :]
-        new = head + "\n" + entry_md.strip() + "\n\n" + tail.lstrip()
-    else:
-        new = entry_md.strip() + "\n\n" + existing
-    _write_text_atomic(ref_path, new)
-
-
-def _finalize() -> dict:
-    """Finalize today's draft — mirrors ui/app.py api_finalize()."""
-    root = _root()
-    draft_path = root / "planner" / "latest" / "checkin_draft.json"
-    state_path = root / "planner" / "state.json"
-    ref_path = root / "reflections" / "reflections.md"
-
-    today = _today()
-    user_tz = _tz()
-    draft = _read_json(draft_path) if draft_path.exists() else {}
-    if draft.get("day") != today:
-        return {"ok": False, "reason": "no-draft-for-today", "today": today}
-
-    draft_mode = (draft.get("mode", "commit") or "commit").strip().lower()
-    if draft_mode not in {"commit", "recovery"}:
-        draft_mode = "commit"
-
-    items = draft.get("items", {}) or {}
-    reflection = draft.get("reflection", "") or ""
-
-    done_items = []
-    for k, v in items.items():
-        if v.get("done"):
-            done_items.append(str(v.get("label", "(item)")))
-
-    total_items = len(items)
-    done_count = len(done_items)
-
-    # Plan changed detection (Issue #4 fix)
-    plan_prev_path = root / "planner" / "latest" / "plan_prev.md"
-    plan_path = root / "planner" / "latest" / "plan.md"
-    plan_cur = _read(plan_path).strip()
-    if plan_prev_path.exists():
-        plan_changed = _read(plan_prev_path).strip() != plan_cur
-    elif plan_cur:
-        plan_changed = True
-    else:
-        plan_changed = False
-
-    rating = _compute_rating(done_count, total_items, reflection, False)
-    if draft_mode == "recovery" and rating == "bad" and (done_count >= 1 or len(reflection.strip()) >= 30):
-        rating = "fair"
-    counts = _counts_for_streak(done_count, reflection, plan_changed)
-    if draft_mode == "recovery":
-        counts = counts or (len(reflection.strip()) >= 30)
-
-    state = _read_json(state_path) if state_path.exists() else {}
-    last_streak_date = state.get("lastStreakDate")
-    streak = int(state.get("streak", 0) or 0)
-
-    # Streak gap detection (Issue #2 fix)
-    if counts:
-        if last_streak_date != today:
-            if last_streak_date is not None:
-                today_date = datetime.now(user_tz).date()
-                try:
-                    last_date = date.fromisoformat(last_streak_date)
-                    gap = (today_date - last_date).days
-                    if gap > 1:
-                        streak = 1
-                    else:
-                        streak += 1
-                except (ValueError, TypeError):
-                    streak = 1
-            else:
-                streak = 1
-            state["lastStreakDate"] = today
-
-    summary = _summarize_paragraph(today, rating, done_items, 0, reflection)
-
-    # history (keep last 30 days)
-    hist = state.get("history", []) or []
-    hist.append({"day": today, "rating": rating, "mode": draft_mode, "streakCounted": bool(counts), "doneCount": done_count, "total": total_items})
-    by_day = {}
-    for e in hist:
-        by_day[e.get("day")] = e
-    hist = list(by_day.values())
-    hist.sort(key=lambda x: x.get("day", ""))
-    hist = hist[-30:]
-    state["history"] = hist
-
-    # prepend reflection entry
-    now = datetime.now(user_tz)
-    entry_lines = [
-        f"## {today}",
-        f"- Time: {now.isoformat(timespec='minutes')}",
-        "",
-        f"**Rating:** {rating.upper()}",
-        "",
-        f"**Mode:** {draft_mode.upper()}",
-        "",
-        "**Done**",
-    ]
-    if done_items:
-        for it in done_items:
-            entry_lines.append(f"- {it}")
-    else:
-        entry_lines.append("- (none)")
-
-    entry_lines += ["", "**Notes**"]
-    notes_added = False
-    for k, v in items.items():
-        comment = str(v.get("comment", "")).strip()
-        label = str(v.get("label", "(item)"))
-        if comment:
-            notes_added = True
-            entry_lines.append(f"- {label}: {comment}")
-    if not notes_added:
-        entry_lines.append("- (none)")
-
-    entry_lines += [
-        "",
-        "**Reflection**",
-        (reflection.strip() if reflection.strip() else "- (none)"),
-        "",
-        "**Auto-summary**",
-        f"- {summary}",
-    ]
-
-    _prepend_reflection(ref_path, "\n".join(entry_lines))
-
-    # update state
-    state["streak"] = streak
-    state["lastRating"] = rating
-    state["lastMode"] = draft_mode
-    state["lastSummary"] = summary
-    state["lastFinalizedDate"] = today
-    _write_json(state_path, state)
-
-    # clear draft after finalize
-    _write_json(draft_path, {"day": today, "updatedAt": now.isoformat(timespec="seconds"), "items": {}, "reflection": ""})
-
-    return {"ok": True, "day": today, "rating": rating, "streak": streak}
+    root = workspace_root()
+    draft["updatedAt"] = now_local().isoformat(timespec="seconds")
+    write_json_atomic(draft_path(root), draft)
 
 
 # ── Stylesheet ─────────────────────────────────────────────────
@@ -482,7 +232,7 @@ class TodoItem(Horizontal):
         yield Checkbox(self.item_label, value=self.item_done, id=f"cb-{self.item_key}")
         yield Input(
             value=self.item_comment,
-            placeholder="comment…",
+            placeholder="comment\u2026",
             id=f"cmt-{self.item_key}",
             classes="comment-input",
         )
@@ -509,37 +259,23 @@ class TasksScreen(Vertical):
         table: DataTable = self.query_one("#tasks-table", DataTable)
         table.add_columns("ID", "Title", "Type", "Pri", "Status", "Details")
 
-        root = _root()
-        txt = _read(root / "planner" / "tasks.yaml")
-        if not txt.strip():
-            return
-
         try:
-            data = yaml.safe_load(txt)
+            tasks_file = load_tasks()
         except Exception:
             return
 
-        tasks = data.get("tasks", []) if isinstance(data, dict) else []
-        for t in tasks:
-            ttype = str(t.get("type", "?"))
+        for t in tasks_file.tasks:
             details = ""
-            if ttype == "deadline_project":
-                details = f"{t.get('remaining_hours', '?')}h remaining"
-            elif ttype == "weekly_budget":
-                details = f"{t.get('target_hours_per_week', '?')}h/week"
-            elif ttype == "daily_ritual":
-                details = f"{t.get('estimated_minutes_per_day', '?')}min/day"
-            elif ttype == "open_ended":
+            if t.type == "deadline_project":
+                details = f"{t.remaining_hours or '?'}h remaining"
+            elif t.type == "weekly_budget":
+                details = f"{t.target_hours_per_week or '?'}h/week ({t.hours_this_week:.1f}h done)"
+            elif t.type == "daily_ritual":
+                details = f"{t.estimated_minutes_per_day or '?'}min/day"
+            elif t.type == "open_ended":
                 details = "open-ended"
 
-            table.add_row(
-                str(t.get("id", "?")),
-                str(t.get("title", "?")),
-                ttype,
-                str(t.get("priority", "")),
-                str(t.get("status", "?")),
-                details,
-            )
+            table.add_row(t.id, t.title, t.type, str(t.priority), t.status, details)
 
 
 class StatusScreen(Vertical):
@@ -551,7 +287,8 @@ class StatusScreen(Vertical):
         yield DataTable(id="history-table")
 
     def on_mount(self) -> None:
-        state = _read_json(_root() / "planner" / "state.json")
+        root = workspace_root()
+        state = read_json(state_path(root))
         streak = state.get("streak", 0)
         last_rating = (state.get("lastRating", "") or "").upper()
         last_mode = (state.get("lastMode", "") or "").upper()
@@ -586,7 +323,7 @@ class StatusScreen(Vertical):
 
 
 class MoltFocusApp(App):
-    """MoltFocus — interactive terminal planner."""
+    """MoltFocus \u2014 interactive terminal planner."""
 
     TITLE = "MoltFocus"
     CSS = CSS
@@ -602,13 +339,13 @@ class MoltFocusApp(App):
         Binding("escape", "blur_focus", "Back"),
         Binding("ctrl+s", "save_plan", "Save Plan"),
         Binding("f", "finalize_day", "Finalize"),
+        Binding("g", "generate_plan", "Generate"),
         Binding("q", "quit_app", "Quit"),
     ]
 
     current_view: reactive[str] = reactive("dashboard")
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
-        """Control which bindings appear in the footer based on context."""
         if action == "save_plan":
             return True if self._plan_editing else None
         if action == "blur_focus":
@@ -619,7 +356,7 @@ class MoltFocusApp(App):
         super().__init__()
         self._draft = _load_draft()
         self._plan_md = ""
-        self._checkboxes: list[dict] = []
+        self._checkboxes: list = []
         self._plan_editing = False
 
     def compose(self) -> ComposeResult:
@@ -660,30 +397,25 @@ class MoltFocusApp(App):
         self._load_data()
 
     def _load_data(self) -> None:
-        """Load plan, draft, state and populate widgets."""
-        root = _root()
+        root = workspace_root()
 
-        # Plan
-        self._plan_md = _read(root / "planner" / "latest" / "plan.md")
+        self._plan_md = read_text(plan_path(root))
         plan_widget = self.query_one("#plan-viewer", Markdown)
         if self._plan_md.strip():
             plan_widget.update(self._plan_md)
         else:
             plan_widget.update("*(no plan yet)*")
 
-        # Checkboxes from plan
-        self._checkboxes = _checkboxes(self._plan_md)
+        self._checkboxes = extract_checkboxes(self._plan_md)
         self._draft = _load_draft()
         self._rebuild_checkin_list()
 
-        # Reflection
         reflection_area = self.query_one("#reflection-area", TextArea)
         reflection = self._draft.get("reflection", "")
         reflection_area.load_text(reflection)
 
-        # Yesterday summary
         summary_widget = self.query_one("#yesterday-summary", Static)
-        state = _read_json(root / "planner" / "state.json")
+        state = read_json(state_path(root))
         last_summary = state.get("lastSummary", "")
         if last_summary:
             summary_widget.update(f"Yesterday: {last_summary}")
@@ -693,32 +425,27 @@ class MoltFocusApp(App):
         self._update_mode_display()
 
     def _rebuild_checkin_list(self) -> None:
-        """(Re)build the checkin todo items from current checkboxes + draft."""
         items = self._draft.get("items", {})
         checkin_list = self.query_one("#checkin-list", Vertical)
         checkin_list.remove_children()
 
         for cb in self._checkboxes:
-            d = items.get(cb["key"], {})
-            done = d.get("done", cb["checked"])
+            key = cb.key
+            d = items.get(key, {})
+            done = d.get("done", cb.checked)
             comment = d.get("comment", "")
             checkin_list.mount(
-                TodoItem(
-                    key=cb["key"],
-                    label=cb["label"],
-                    done=done,
-                    comment=comment,
-                )
+                TodoItem(key=key, label=cb.label, done=done, comment=comment)
             )
 
     def _update_mode_display(self) -> None:
-        """Update sub_title with streak + rating + mode."""
-        state = _read_json(_root() / "planner" / "state.json")
+        root = workspace_root()
+        state = read_json(state_path(root))
         streak = state.get("streak", 0)
         last_rating = (state.get("lastRating", "") or "").upper()
         mode = (self._draft.get("mode", "commit") or "commit").upper()
 
-        parts = [f"🔥 {streak}"]
+        parts = [f"\U0001f525 {streak}"]
         if last_rating:
             parts.append(last_rating)
         parts.append(f"[{mode}]")
@@ -734,7 +461,6 @@ class MoltFocusApp(App):
         if key not in items:
             items[key] = {"label": event.checkbox.label, "done": False, "comment": ""}
         items[key]["done"] = event.value
-        # Update visual styling on the parent row
         parent = event.checkbox.parent
         if parent and isinstance(parent, TodoItem):
             if event.value:
@@ -792,28 +518,24 @@ class MoltFocusApp(App):
         self.refresh_bindings()
 
     def action_blur_focus(self) -> None:
-        """Escape handler — unfocus current widget or exit plan edit."""
         if self._plan_editing:
             self._exit_plan_edit(save=False)
         self.set_focus(None)
         self.refresh_bindings()
 
     def action_toggle_mode(self) -> None:
-        """Toggle between commit and recovery mode."""
         current = (self._draft.get("mode", "commit") or "commit").lower()
         self._draft["mode"] = "recovery" if current == "commit" else "commit"
         self._update_mode_display()
         self._auto_save()
 
     def action_edit_plan(self) -> None:
-        """Toggle between plan preview and plan editor."""
         if self._plan_editing:
             self._exit_plan_edit(save=False)
         else:
             self._enter_plan_edit()
 
     def _enter_plan_edit(self) -> None:
-        """Show the plan TextArea editor, hide Markdown preview."""
         self._plan_editing = True
         editor = self.query_one("#plan-editor", TextArea)
         editor.load_text(self._plan_md)
@@ -823,27 +545,24 @@ class MoltFocusApp(App):
         self.refresh_bindings()
 
     def _exit_plan_edit(self, save: bool = False) -> None:
-        """Return to Markdown preview, optionally saving the plan."""
         self._plan_editing = False
         editor = self.query_one("#plan-editor", TextArea)
         viewer = self.query_one("#plan-viewer", Markdown)
 
         if save:
             new_text = editor.text
-            root = _root()
-            plan_path = root / "planner" / "latest" / "plan.md"
-            prev_path = root / "planner" / "latest" / "plan_prev.md"
+            root = workspace_root()
+            pp = plan_path(root)
+            pprev = plan_prev_path(root)
 
-            # Preserve previous plan
-            if plan_path.exists():
-                _write_text_atomic(prev_path, _read(plan_path))
+            if pp.exists():
+                write_text_atomic(pprev, read_text(pp))
 
-            _write_text_atomic(plan_path, new_text.rstrip() + "\n")
+            write_text_atomic(pp, new_text.rstrip() + "\n")
 
-            # Reload plan and rebuild checkin
             self._plan_md = new_text.rstrip() + "\n"
             viewer.update(self._plan_md if self._plan_md.strip() else "*(no plan yet)*")
-            self._checkboxes = _checkboxes(self._plan_md)
+            self._checkboxes = extract_checkboxes(self._plan_md)
             self._rebuild_checkin_list()
 
         editor.display = False
@@ -851,12 +570,10 @@ class MoltFocusApp(App):
         self.refresh_bindings()
 
     def action_save_plan(self) -> None:
-        """Ctrl+S handler — save plan if editing."""
         if self._plan_editing:
             self._exit_plan_edit(save=True)
 
     def action_finalize_day(self) -> None:
-        """Save draft, then finalize in background thread."""
         try:
             _save_draft(self._draft)
         except Exception:
@@ -865,15 +582,19 @@ class MoltFocusApp(App):
 
     @work(thread=True)
     def _do_finalize(self) -> None:
-        """Run finalize in worker thread, show notification with result."""
         try:
-            result = _finalize()
+            result = finalize_day()
             if result.get("ok"):
-                rating = result["rating"].upper()
-                streak = result["streak"]
-                self.call_from_thread(self.notify,
-                    f"Finalized! Rating: {rating}, Streak: {streak}",
-                    title="Day Finalized", severity="information")
+                if result.get("already_finalized"):
+                    self.call_from_thread(self.notify,
+                        "Already finalized today.",
+                        title="Day Finalized", severity="information")
+                else:
+                    rating = result["rating"].upper()
+                    streak = result["streak"]
+                    self.call_from_thread(self.notify,
+                        f"Finalized! Rating: {rating}, Streak: {streak}",
+                        title="Day Finalized", severity="information")
                 self.call_from_thread(self._load_data)
             else:
                 self.call_from_thread(self.notify,
@@ -883,8 +604,24 @@ class MoltFocusApp(App):
             self.call_from_thread(self.notify,
                 f"Error: {e}", title="Error", severity="error")
 
+    def action_generate_plan(self) -> None:
+        """Generate a new plan using the built-in scheduler."""
+        self._do_generate()
+
+    @work(thread=True)
+    def _do_generate(self) -> None:
+        try:
+            from core.scheduler import generate_plan
+            plan_md = generate_plan()
+            self.call_from_thread(self.notify,
+                "Plan generated!",
+                title="Plan Generated", severity="information")
+            self.call_from_thread(self._load_data)
+        except Exception as e:
+            self.call_from_thread(self.notify,
+                f"Error: {e}", title="Error", severity="error")
+
     def action_quit_app(self) -> None:
-        # Final save before exit
         try:
             _save_draft(self._draft)
         except Exception:
@@ -894,12 +631,10 @@ class MoltFocusApp(App):
     def _switch_to(self, view: str) -> None:
         main = self.query_one("#main-layout", Horizontal)
 
-        # Remove overlay screens if present
         for old in self.query(".overlay-screen"):
             old.remove()
 
         if view == "dashboard":
-            # Show the main layout panes
             try:
                 self.query_one("#left-pane").display = True
                 self.query_one("#right-pane").display = True
@@ -907,7 +642,6 @@ class MoltFocusApp(App):
                 pass
             self.current_view = "dashboard"
         else:
-            # Hide dashboard panes, mount overlay
             try:
                 self.query_one("#left-pane").display = False
                 self.query_one("#right-pane").display = False
@@ -924,18 +658,155 @@ class MoltFocusApp(App):
             self.current_view = view
 
 
+# ── CLI subcommands ────────────────────────────────────────────
+
+
+def _cli_generate(args: list[str]) -> None:
+    """Generate a daily plan using the built-in scheduler."""
+    from core.scheduler import generate_plan
+    from datetime import date as date_type
+
+    target_date = None
+    if "--date" in args:
+        idx = args.index("--date")
+        if idx + 1 < len(args):
+            try:
+                target_date = date_type.fromisoformat(args[idx + 1])
+            except ValueError:
+                print(f"Invalid date: {args[idx + 1]}")
+                sys.exit(1)
+
+    plan_md = generate_plan(target_date=target_date)
+    print(plan_md)
+
+
+def _cli_finalize() -> None:
+    """Run finalization from CLI."""
+    result = finalize_day()
+    if result.get("ok"):
+        if result.get("already_finalized"):
+            print(f"Already finalized for {result['day']}.")
+        else:
+            print(f"Finalized! Rating: {result['rating'].upper()}, Streak: {result['streak']}")
+            if result.get("task_updates"):
+                print(f"Task updates: {', '.join(result['task_updates'])}")
+    else:
+        print(f"Cannot finalize: {result.get('reason', 'unknown')}")
+        sys.exit(1)
+
+
+def _cli_tasks() -> None:
+    """List tasks from CLI."""
+    from core import State
+    tasks_file = load_tasks()
+    state_data = read_json(state_path(workspace_root()))
+    state = State.from_dict(state_data)
+    computed = get_tasks_with_computed_fields(tasks_file, state, today_str())
+    for t in computed:
+        urgency = t.get("urgency_score", 0)
+        print(f"  [{t['status']:>8}] {t['id']:<25} {t['title']:<30} pri={t['priority']} urgency={urgency:.1f}")
+
+
+def _cli_analytics() -> None:
+    """Show analytics from CLI."""
+    from core.analytics import refresh_analytics
+    summary = refresh_analytics()
+    print(f"Days tracked: {summary.total_days_tracked}")
+    print(f"7-day avg: {summary.rolling_7day_avg:.1%}")
+    print(f"30-day avg: {summary.rolling_30day_avg:.1%}")
+    print(f"Recovery success rate: {summary.recovery_success_rate:.1%}")
+    if summary.completion_by_weekday:
+        print("\nCompletion by weekday:")
+        for day, rate in sorted(summary.completion_by_weekday.items()):
+            print(f"  {day}: {rate:.1%}")
+    if summary.most_skipped_tasks:
+        print(f"\nMost skipped: {', '.join(summary.most_skipped_tasks)}")
+
+
+def _cli_focus(args: list[str]) -> None:
+    """Focus session management from CLI."""
+    from core.focus import start_session, stop_session, get_active_session, get_focus_stats
+
+    if not args:
+        # Show current state
+        session = get_active_session()
+        if session:
+            print(f"Active focus: {session.task_label} (started {session.started_at})")
+            print(f"  Planned: {session.planned_minutes}min, Interruptions: {session.interruptions}")
+        else:
+            print("No active focus session.")
+        stats = get_focus_stats(days=7)
+        print(f"\n7-day stats: {stats['total_sessions']} sessions, {stats['total_minutes']:.0f}min total")
+        return
+
+    subcmd = args[0]
+    if subcmd == "start":
+        task_id = args[1] if len(args) > 1 else "manual"
+        label = args[2] if len(args) > 2 else task_id
+        minutes = int(args[3]) if len(args) > 3 else 25
+        session = start_session(task_id, label, minutes)
+        print(f"Focus started: {label} ({minutes}min)")
+    elif subcmd == "stop":
+        completed = "--completed" in args
+        session = stop_session(completed=completed)
+        print(f"Focus stopped: {session.elapsed_minutes:.1f}min elapsed")
+    elif subcmd == "interrupt":
+        from core.focus import record_interruption
+        session = record_interruption()
+        if session:
+            print(f"Interruption recorded ({session.interruptions} total)")
+        else:
+            print("No active session.")
+
+
 # ── Entry point ────────────────────────────────────────────────
 
 
 def main() -> None:
-    root = _root()
+    root = workspace_root()
     if not root.exists():
         print(f"Workspace not found: {root}")
         print("Set PLANNER_ROOT or run setup.sh first.")
         sys.exit(1)
 
-    app = MoltFocusApp()
-    app.run()
+    args = sys.argv[1:]
+
+    # Subcommand dispatch
+    if args:
+        cmd = args[0]
+        if cmd == "generate":
+            _cli_generate(args[1:])
+        elif cmd == "finalize":
+            _cli_finalize()
+        elif cmd == "tasks":
+            _cli_tasks()
+        elif cmd == "analytics":
+            _cli_analytics()
+        elif cmd == "focus":
+            _cli_focus(args[1:])
+        elif cmd == "--help" or cmd == "-h":
+            print("MoltFocus — interactive terminal planner")
+            print()
+            print("Usage:")
+            print("  moltfocus                  Launch TUI (default)")
+            print("  moltfocus generate         Generate plan using scheduler")
+            print("    --date YYYY-MM-DD        Generate for specific date")
+            print("  moltfocus finalize         Run nightly finalization")
+            print("  moltfocus tasks            List tasks with urgency scores")
+            print("  moltfocus analytics        Show analytics summary")
+            print("  moltfocus focus            Show focus session state")
+            print("    start <id> [label] [min] Start focus session")
+            print("    stop [--completed]       Stop focus session")
+            print("    interrupt                Record interruption")
+        else:
+            print(f"Unknown command: {cmd}")
+            print("Run 'moltfocus --help' for usage.")
+            sys.exit(1)
+        return
+
+    # Default: launch TUI
+    tui_app = MoltFocusApp()
+    tui_app.run()
 
 
 if __name__ == "__main__":

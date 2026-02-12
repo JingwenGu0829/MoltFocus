@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moltfocus"
+version = "0.3.0"
+description = "Agent-native daily planner with co-evolving intelligence"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+ui = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "python-multipart>=0.0.6",
+]
+tui = [
+    "textual>=0.40.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+]
+all = [
+    "moltfocus[ui,tui,dev]",
+]
+
+[project.scripts]
+moltfocus = "cli.moltfocus:main"
+
+[tool.setuptools.packages.find]
+include = ["core*", "cli*", "ui*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
